@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseDuration, exclusionReason, median, computeScores, combineScore, DEFAULTS } from '../score.js';
+import { parseDuration, exclusionReason, sizeOf, median, computeScores, combineScore, DEFAULTS } from '../score.js';
 
 const DAY = 86400000;
 const NOW = Date.UTC(2026, 9, 16, 12);
@@ -19,6 +19,14 @@ test('parseDuration handles h/m/s and edge cases', () => {
   assert.equal(parseDuration('P0D'), 0);
   assert.equal(parseDuration('P1DT1H'), 90000);
   assert.equal(parseDuration(undefined), 0);
+});
+
+test('sizeOf buckets by duration', () => {
+  assert.equal(sizeOf(181), 'short');
+  assert.equal(sizeOf(599), 'short');
+  assert.equal(sizeOf(600), 'medium');
+  assert.equal(sizeOf(1800), 'medium');
+  assert.equal(sizeOf(1801), 'long');
 });
 
 test('exclusionReason: shorts, lives, premieres, missing views', () => {

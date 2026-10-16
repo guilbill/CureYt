@@ -12,6 +12,8 @@ export const DEFAULTS = {
   alpha: 0.15, // weight of absolute volume
   lambda: 0.02, // decay per day of age
   shortMaxSeconds: 180,
+  mediumMinSeconds: 600, // size filter: short < 10 min <= medium <= 30 min < long
+  longMinSeconds: 1800,
   minVideoAgeHours: 6, // a video enters the ranking only after this age
   likeK: 100, // views needed before a video's own like rate is trusted
   noteBalance: 1 / 3, // 0 = views only, 1 = likes only; 1/3 means views x1 + likes x0.5
@@ -23,6 +25,12 @@ export function parseDuration(iso) {
   if (!m) return 0;
   const [, d = 0, h = 0, min = 0, s = 0] = m;
   return +d * 86400 + +h * 3600 + +min * 60 + +s;
+}
+
+// duration (seconds) -> 'short' | 'medium' | 'long', for the size filter
+export function sizeOf(seconds, params = DEFAULTS) {
+  if (seconds < params.mediumMinSeconds) return 'short';
+  return seconds <= params.longMinSeconds ? 'medium' : 'long';
 }
 
 // video: { duration (seconds), views, live (bool) } -> null | 'short' | 'live' | 'nodata'
