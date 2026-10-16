@@ -119,6 +119,8 @@ main { max-width: 880px; margin: 0 auto; padding: 16px; }
   .card { grid-template-columns: 124px 1fr; gap: 10px; padding: 8px; }
   .title { font-size: .95rem; }
   .landing { padding: 24px 0; }
-  .controls { margin-left: 0; width: 100%; }
+  .controls { margin-left: 0; width: 100%; gap: 8px; }
+  .period { padding: 6px 9px; }
+  .controls .btn { padding: 6px 10px; }
   .updated { flex: 1 1 100%; order: 5; }
 }
