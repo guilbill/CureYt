@@ -11,7 +11,6 @@ const SIZES = [ // 'all' first: it is the default and the fallback for unknown s
   { key: 'medium', label: 'Moyennes', title: 'De 10 à 30 min', empty: ' moyenne' },
   { key: 'long', label: 'Longues', title: 'Plus de 30 min', empty: ' longue' },
 ];
-const ZOOMS = [['s', 'S'], ['m', 'M'], ['l', 'L']]; // card size: small, medium, large
 const debug = new URLSearchParams(location.search).has('debug'); // ?debug shows the score inputs on each card
 const $ = (id) => document.getElementById(id);
 
@@ -22,7 +21,6 @@ const store = {
 const FLAG = 'cureyt.signedIn';
 const PERIOD_KEY = 'cureyt.period';
 const SIZE_KEY = 'cureyt.size';
-const ZOOM_KEY = 'cureyt.zoom';
 const BALANCE_KEY = 'cureyt.balance'; // 0..100, 0 = views only, 100 = likes only
 const DEFAULT_BALANCE = Math.round(DEFAULTS.noteBalance * 100);
 const storedBalance = Number(store.get(BALANCE_KEY));
@@ -33,7 +31,6 @@ const state = {
   signedIn: false,
   period: PERIODS.includes(+store.get(PERIOD_KEY)) ? +store.get(PERIOD_KEY) : 7,
   size: SIZES.some((s) => s.key === store.get(SIZE_KEY)) ? store.get(SIZE_KEY) : 'all',
-  zoom: ZOOMS.some(([k]) => k === store.get(ZOOM_KEY)) ? store.get(ZOOM_KEY) : 'm',
   balance: store.get(BALANCE_KEY) != null && storedBalance >= 0 && storedBalance <= 100 ? storedBalance : DEFAULT_BALANCE,
   items: [], // scored, eligible videos with display data, sorted by score
   hasData: false,
@@ -121,13 +118,6 @@ function renderSizes() {
   }, s.label)));
 }
 
-function renderZoom() {
-  $('zoom').replaceChildren(...ZOOMS.map(([k, label]) => h('button', {
-    type: 'button', class: 'period', 'aria-pressed': String(k === state.zoom), 'aria-label': `Taille des cartes ${label}`,
-    onclick: () => { state.zoom = k; store.set(ZOOM_KEY, k); renderZoom(); renderList(); },
-  }, label)));
-}
-
 function renderUpdated() {
   const parts = [];
   if (state.refreshing) parts.push('Mise à jour…');
@@ -157,7 +147,6 @@ function card(item) {
 
 function renderList() {
   const shown = state.items.filter((i) => i.ageDays <= state.period && (state.size === 'all' || sizeOf(i.video.duration) === state.size));
-  $('cards').dataset.zoom = state.zoom;
   $('cards').replaceChildren(...shown.map(card));
   const empty = $('empty');
   empty.hidden = shown.length > 0;
@@ -199,7 +188,7 @@ function render() {
   $('menu').hidden = !showList;
   $('info').hidden = !showList;
   if (state.view === 'landing') renderLanding();
-  if (showList) { renderPeriods(); renderSizes(); renderZoom(); renderList(); }
+  if (showList) { renderPeriods(); renderSizes(); renderList(); }
   renderUpdated();
   renderNotice();
 }

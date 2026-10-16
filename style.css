@@ -124,15 +124,9 @@ body[data-view="landing"] main { max-width: none; padding: 0 16px; }
 @keyframes pop-in { from { opacity: 0; transform: translateY(8px); } }
 
 body[data-view="list"] main { max-width: none; padding: 8px 16px 72px; }
-.cards {
-  --card-min: 320px;
-  list-style: none; margin: 0; padding: 0; display: grid; gap: 14px;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--card-min)), 1fr));
-}
-.cards[data-zoom="s"] { --card-min: 220px; gap: 10px; }
-.cards[data-zoom="l"] { --card-min: 480px; gap: 16px; }
+.cards { list-style: none; margin: 0 auto; padding: 0; display: grid; gap: 16px; max-width: 640px; }
 .card {
-  position: relative; aspect-ratio: 16 / 10; border-radius: var(--radius); overflow: hidden; background: var(--surface);
+  position: relative; aspect-ratio: 16 / 9; border-radius: var(--radius); overflow: hidden; background: var(--surface);
   border: 1px solid var(--border); transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
 }
 .card:hover, .card:focus-within { transform: translateY(-4px); border-color: #5a5e64; box-shadow: 0 10px 24px rgba(0, 0, 0, .5); }
@@ -147,7 +141,7 @@ body[data-view="list"] main { max-width: none; padding: 8px 16px 72px; }
 .badges { position: absolute; left: 8px; top: 8px; display: flex; flex-wrap: wrap; gap: 4px; max-width: calc(100% - 80px); }
 .info { position: absolute; left: 0; right: 0; bottom: 0; padding: 36px 12px 10px; background: linear-gradient(transparent, rgba(0, 0, 0, .88)); }
 .title {
-  margin: 0 0 2px; font-weight: 600; font-size: .95rem; line-height: 1.3;
+  margin: 0 0 2px; font-weight: 600; font-size: 1.05rem; line-height: 1.3;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .meta, .stats { display: block; color: #d3d6db; font-size: .8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -158,9 +152,6 @@ body[data-view="list"] main { max-width: none; padding: 8px 16px 72px; }
 }
 .badge.hot { background: var(--hot-bg); color: var(--hot-text); }
 .badge.low { font-weight: 400; color: #d3d6db; }
-.cards[data-zoom="s"] .title { font-size: .85rem; }
-.cards[data-zoom="s"] .info { padding: 28px 10px 8px; }
-.cards[data-zoom="l"] .title { font-size: 1.1rem; }
 
 @media (prefers-reduced-motion: reduce) {
   .card, .card img, .pop[open] { transition: none; animation: none; }
