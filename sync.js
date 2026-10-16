@@ -110,6 +110,7 @@ async function lightRefresh({ api, cache, channels, now, onProgress }) {
 export async function runRefresh({ api, cache, mode, subs, now = Date.now(), onProgress = () => {} }) {
   const startUnits = api.units;
   if (subs || mode === 'full') {
+    onProgress({ phase: 'subs', done: 0, total: 0 });
     await syncSubscriptions({ api, cache, refreshStats: mode === 'full' });
   }
   const channels = await cache.getAll('channels');

@@ -181,16 +181,30 @@ function setView() {
 }
 
 // ---------- refresh ----------
+// Full-page progress, used while there is nothing to show yet. No value = animated, indeterminate bar.
+function showLoading(text) {
+  state.view = 'loading';
+  render();
+  $('loading-text').textContent = text;
+  $('loading-bar').removeAttribute('value');
+}
+
 function onProgress(p) {
+  const counting = p.total > 0;
   if (state.view === 'loading') {
+    const bar = $('loading-bar');
+    if (!counting) {
+      $('loading-text').textContent = 'Lecture de vos abonnements…';
+      bar.removeAttribute('value');
+      return;
+    }
     $('loading-text').textContent = p.phase === 'channels'
       ? `${p.done} / ${p.total} chaînes traitées`
       : `Mise à jour : ${p.done} / ${p.total} chaînes`;
-    const bar = $('loading-bar');
-    bar.max = Math.max(1, p.total);
+    bar.max = p.total;
     bar.value = p.done;
   } else {
-    $('updated').textContent = `Mise à jour… ${p.done} / ${p.total}`;
+    $('updated').textContent = counting ? `Mise à jour… ${p.done} / ${p.total}` : 'Mise à jour…';
   }
 }
 
@@ -216,10 +230,9 @@ async function startRefresh({ manual = false, force = false, forceSubs = false }
 
   state.refreshing = true;
   state.notice = null;
-  if (!state.hasData) state.view = 'loading';
-  render();
+  // Cached list available: show it right away and update in the background; otherwise full-page progress.
+  if (state.hasData) { state.view = 'list'; render(); } else showLoading('Connexion à YouTube…');
   try {
-    if (!state.hasData) $('loading-text').textContent = 'Connexion à YouTube…';
     await auth.requestToken();
     const api = createApi({ getToken: auth.getToken, refreshToken: auth.refreshToken });
     await runRefresh({ api, cache: state.cache, ...plan, onProgress });
@@ -240,11 +253,13 @@ async function signIn() {
     return renderNotice();
   }
   state.notice = null;
+  showLoading('Connexion à Google…'); // feedback from the click on, the Google window may take a moment
   try {
     await auth.requestToken();
   } catch {
     state.notice = { text: 'Connexion Google annulée ou refusée.' };
-    return renderNotice();
+    setView();
+    return render();
   }
   store.set(FLAG, '1');
   state.signedIn = true;
