@@ -12,6 +12,7 @@ export const DEFAULTS = {
   alpha: 0.15, // weight of absolute volume
   lambda: 0.02, // decay per day of age
   shortMaxSeconds: 180,
+  minVideoAgeHours: 6, // a video enters the ranking only after this age
 };
 
 export function parseDuration(iso) {
@@ -57,7 +58,8 @@ function rawReference(matureSorted, excludeId, params) {
 /**
  * channels: [{ id, subscriberCount, hiddenSubscriberCount }]
  * videos:   [{ id, channelId, views, publishedAt (ISO), excluded }]
- * Returns one entry per eligible video of a known channel.
+ * Returns one entry per eligible video of a known channel that is at least minVideoAgeHours old.
+ * M is the raw reference median (null when n = 0), R the smoothed reference actually used.
  */
 export function computeScores({ channels, videos, now = Date.now(), params = {} }) {
   const p = { ...DEFAULTS, ...params };
@@ -103,6 +105,7 @@ export function computeScores({ channels, videos, now = Date.now(), params = {} 
     else R = (n * M + p.m * P) / (n + p.m);
 
     const ageDays = Math.max(0, (now - v.t) / DAY_MS);
+    if (ageDays * 24 < p.minVideoAgeHours) continue;
     const f = 1 - Math.exp(-ageDays / p.tau);
     const vproj = v.views / Math.max(f, p.fmin);
     const vprojSafe = Math.max(vproj, 1);
@@ -110,7 +113,7 @@ export function computeScores({ channels, videos, now = Date.now(), params = {} 
     const rho = vprojSafe / R;
     const score = Math.log(rho) + p.alpha * Math.log10(vprojSafe) - p.lambda * ageDays;
 
-    out.push({ id: v.id, channelId: v.channelId, score, rho, vproj, confidence: confidenceFor(n), n, ageDays });
+    out.push({ id: v.id, channelId: v.channelId, score, rho, vproj, M, R, confidence: confidenceFor(n), n, ageDays });
   }
   return out;
 }

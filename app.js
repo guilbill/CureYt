@@ -3,10 +3,9 @@ import { computeScores, DAY_MS } from './score.js';
 import { createApi, ApiError } from './api.js';
 import { planRefresh, runRefresh, readMeta } from './sync.js';
 import * as auth from './auth.js';
-import { fillDemoCache } from './demo.js';
 
 const PERIODS = [3, 7, 14, 30];
-const demo = new URLSearchParams(location.search).has('demo');
+const debug = new URLSearchParams(location.search).has('debug'); // ?debug shows the score inputs on each card
 const $ = (id) => document.getElementById(id);
 
 const store = {
@@ -97,15 +96,14 @@ function renderPeriods() {
 
 function renderUpdated() {
   const parts = [];
-  if (demo) parts.push('Mode démo');
-  else if (state.refreshing) parts.push('Mise à jour…');
+  if (state.refreshing) parts.push('Mise à jour…');
   else if (state.lastUpdated) parts.push(`mis à jour ${timeAgo(state.lastUpdated)}`);
   $('updated').textContent = parts.join(' · ');
-  $('refresh').disabled = state.refreshing || demo;
+  $('refresh').disabled = state.refreshing;
 }
 
 function card(item) {
-  const { video, channel, rho, confidence, ageDays } = item;
+  const { video, channel, rho, confidence, ageDays, vproj, M, R, n, score } = item;
   const url = `https://www.youtube.com/watch?v=${encodeURIComponent(video.id)}`;
   const hot = rho >= 2;
   return h('li', { class: 'card' },
@@ -118,7 +116,9 @@ function card(item) {
       h('div', { class: 'stats' },
         h('span', { class: 'views' }, `${fmtViews.format(video.views)} vues`),
         h('span', { class: `badge${hot ? ' hot' : ''}`, title: 'Vues projetées par rapport à la référence de la chaîne' }, `×${fmtRatio.format(rho)}`),
-        confidence === 'low' ? h('span', { class: 'badge low', title: 'Peu de vidéos de référence pour cette chaîne' }, 'peu de données') : null)));
+        confidence === 'low' ? h('span', { class: 'badge low', title: 'Peu de vidéos de référence pour cette chaîne' }, 'peu de données') : null),
+      debug ? h('div', { class: 'debug' },
+        `ρ ${rho.toFixed(2)} · Vproj ${Math.round(vproj)} · M ${M == null ? '-' : Math.round(M)} · R ${Math.round(R)} · n ${n} · S ${score.toFixed(2)} · ${ageDays.toFixed(1)} j`) : null));
 }
 
 function renderList() {
@@ -145,10 +145,9 @@ function renderLanding() {
     h('p', {}, "Connectez-vous avec Google : CureYt classe les vidéos récentes de vos abonnements YouTube selon leurs vues par rapport à la moyenne de leur propre chaîne. Les Shorts, lives et premières sont écartés."),
     h('p', { class: 'fine' }, "Accès en lecture seule. Tout se passe dans votre navigateur : vos données ne sont envoyées à aucun serveur autre que Google."),
     h('div', { class: 'actions' },
-      h('button', { type: 'button', class: 'btn primary', id: 'signin', onclick: signIn }, 'Se connecter avec Google'),
-      h('a', { class: 'btn', href: '?demo' }, 'Voir une démo')),
+      h('button', { type: 'button', class: 'btn primary', id: 'signin', onclick: signIn }, 'Se connecter avec Google')),
     configured ? null : h('p', { class: 'fine warn' },
-      "La connexion Google n'est pas encore configurée sur cette instance (identifiant client OAuth manquant dans config.js). La démo fonctionne sans."));
+      "La connexion Google n'est pas encore configurée sur cette instance (identifiant client OAuth manquant dans config.js)."));
 }
 
 function render() {
@@ -157,8 +156,6 @@ function render() {
   $('loading').hidden = state.view !== 'loading';
   $('listview').hidden = !showList;
   $('controls').hidden = !showList;
-  $('signout').textContent = demo ? 'Quitter la démo' : 'Se déconnecter';
-  $('erase').hidden = demo;
   if (state.view === 'landing') renderLanding();
   if (showList) { renderPeriods(); renderList(); }
   renderUpdated();
@@ -166,7 +163,7 @@ function render() {
 }
 
 function setView() {
-  state.view = (state.signedIn || demo) && state.hasData ? 'list' : 'landing';
+  state.view = state.signedIn && state.hasData ? 'list' : 'landing';
 }
 
 // ---------- refresh ----------
@@ -199,7 +196,7 @@ function describeError(e, manual) {
 }
 
 async function startRefresh({ manual = false, force = false, forceSubs = false } = {}) {
-  if (state.refreshing || demo) return;
+  if (state.refreshing) return;
   const plan = planRefresh(await readMeta(state.cache), Date.now(), { force, forceSubs });
   if (plan.mode === 'none' && !plan.subs) return;
 
@@ -242,7 +239,6 @@ async function signIn() {
 
 function signOut() {
   $('menu').open = false;
-  if (demo) { location.search = ''; return; }
   auth.forgetToken();
   store.set(FLAG, null);
   state.signedIn = false;
@@ -273,14 +269,6 @@ async function init() {
   $('erase').addEventListener('click', erase);
   document.addEventListener('click', (e) => { if (!$('menu').contains(e.target)) $('menu').open = false; });
   setInterval(renderUpdated, 60000);
-
-  if (demo) {
-    state.cache = createMemoryCache();
-    await fillDemoCache(state.cache);
-    await loadFromCache();
-    setView();
-    return render();
-  }
 
   try {
     state.cache = await openCache();

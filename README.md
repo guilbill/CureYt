@@ -3,7 +3,7 @@
 Classe les vidéos récentes de vos abonnements YouTube selon leur surperformance par rapport à leur propre chaîne.
 Page statique (HTML, CSS, JS natif) : tout se passe dans le navigateur, rien n'est envoyé ailleurs qu'à Google.
 
-- Démo sans compte : `?demo` (données fictives)
+- `?debug` dans l'URL : affiche ρ, V_proj, M, R, n et le score sous chaque vidéo, pour calibrer τ, α et λ
 - Spécification : voir `docs/superpowers/plans/2026-10-16-cureyt-v1.md`
 - Tests : `npm test` (Node 20+)
 - Développement local : `python3 -m http.server 8000` puis http://localhost:8000

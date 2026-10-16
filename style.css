@@ -110,6 +110,7 @@ main { max-width: 880px; margin: 0 auto; padding: 16px; }
 .meta { color: var(--muted); font-size: .875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stats { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: auto; font-size: .9rem; }
 .views { color: var(--muted); }
+.debug { font: .75rem/1.3 ui-monospace, monospace; color: var(--muted); }
 .badge { padding: 2px 8px; border-radius: 999px; background: var(--low-bg); font-weight: 600; font-size: .85rem; font-variant-numeric: tabular-nums; }
 .badge.hot { background: var(--hot-bg); color: var(--hot-text); }
 .badge.low { font-weight: 400; color: var(--muted); }

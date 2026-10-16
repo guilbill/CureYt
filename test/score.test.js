@@ -47,6 +47,8 @@ test('spec example 1: 50k views at 3 days, channel reference 10k', () => {
   assert.ok(Math.abs(r.rho - 7.9) < 0.1, `rho ${r.rho}`);
   assert.ok(Math.abs(r.score - 2.7) < 0.1, `score ${r.score}`);
   assert.equal(r.confidence, 'medium'); // n = 10
+  assert.equal(r.M, 10000);
+  assert.ok(Math.abs(r.R - 10000) < 1e-6);
 });
 
 test('spec example 2: 2.5M views on a 2M channel is behind the small one', () => {
@@ -143,7 +145,7 @@ test('no reference anywhere: finite score, low confidence', () => {
 
 test('zero views and very fresh video stay finite', () => {
   const channels = [{ id: 'a', subscriberCount: 1000, hiddenSubscriberCount: false }];
-  const videos = [...refVideos('a', 1000), vid('zero', 'a', 0, 2), vid('fresh', 'a', 100, 0.01)];
+  const videos = [...refVideos('a', 1000), vid('zero', 'a', 0, 2), vid('fresh', 'a', 100, 0.3)];
   const out = computeScores({ channels, videos, now: NOW });
   for (const id of ['zero', 'fresh']) {
     const r = out.find((s) => s.id === id);
@@ -176,4 +178,14 @@ test('reference only counts videos >= 7 days old and at most the 30 most recent'
 
 test('videos from an unknown channel are skipped', () => {
   assert.deepEqual(computeScores({ channels: [], videos: [vid('v', 'ghost', 1, 1)], now: NOW }), []);
+});
+
+test('a video younger than 6 hours is not ranked yet, an older one is', () => {
+  const channels = [{ id: 'a', subscriberCount: 1000, hiddenSubscriberCount: false }];
+  const videos = [...refVideos('a', 1000), vid('young', 'a', 500, 5 / 24), vid('ok', 'a', 500, 7 / 24)];
+  const out = computeScores({ channels, videos, now: NOW });
+  assert.equal(out.find((s) => s.id === 'young'), undefined);
+  assert.ok(out.find((s) => s.id === 'ok'));
+  const custom = computeScores({ channels, videos, now: NOW, params: { minVideoAgeHours: 0 } });
+  assert.ok(custom.find((s) => s.id === 'young'));
 });
