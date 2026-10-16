@@ -140,14 +140,16 @@ function renderList() {
 
 function renderLanding() {
   const configured = auth.isConfigured();
-  $('landing').replaceChildren(
+  // replaceChildren turns null into the text "null", so absent nodes are filtered out
+  $('landing').replaceChildren(...[
     h('h1', {}, 'Les vidéos de vos abonnements qui surperforment'),
     h('p', {}, "Connectez-vous avec Google : CureYt classe les vidéos récentes de vos abonnements YouTube selon leurs vues par rapport à la moyenne de leur propre chaîne. Les Shorts, lives et premières sont écartés."),
     h('p', { class: 'fine' }, "Accès en lecture seule. Tout se passe dans votre navigateur : vos données ne sont envoyées à aucun serveur autre que Google."),
     h('div', { class: 'actions' },
       h('button', { type: 'button', class: 'btn primary', id: 'signin', onclick: signIn }, 'Se connecter avec Google')),
     configured ? null : h('p', { class: 'fine warn' },
-      "La connexion Google n'est pas encore configurée sur cette instance (identifiant client OAuth manquant dans config.js)."));
+      "La connexion Google n'est pas encore configurée sur cette instance (identifiant client OAuth manquant dans config.js)."),
+  ].filter(Boolean));
 }
 
 function render() {
