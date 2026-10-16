@@ -35,8 +35,22 @@
     <section id="listview" hidden>
       <details class="how">
         <summary>Comment lire le classement ?</summary>
-        <p><strong>×5,3</strong> : la vidéo a 5,3 fois plus de vues que la normale de sa chaîne (médiane de ses 30 dernières vidéos), une fois ses vues projetées à maturité selon son âge.</p>
-        <p>Le classement suit ce ratio, puis départage au volume de vues et favorise légèrement les vidéos récentes. Shorts, lives et premières sont exclus. « peu de données » : moins de 5 vidéos de référence pour la chaîne.</p>
+        <p><strong>×5,3</strong> : cette vidéo marche 5,3 fois mieux que d'habitude pour sa chaîne.</p>
+        <p>Exemple : si les vidéos de cette chaîne font en général 10 000 vues, celle-ci en est partie pour environ 53 000. Pour une vidéo de quelques jours, on estime où elle finira, au lieu de juste compter ses vues actuelles.</p>
+        <p>Les vidéos sont classées d'abord par ce ratio, puis par nombre de vues, avec un léger avantage aux plus récentes. Le taux de pouces, comparé à celui de la chaîne, ajuste le classement (voir Réglages). Shorts, lives et premières sont exclus. « peu de données » : moins de 5 vidéos de référence pour cette chaîne.</p>
+      </details>
+      <details class="how">
+        <summary>Réglages</summary>
+        <div class="setting">
+          <label for="balance">Ce qui compte le plus dans le classement</label>
+          <div class="slider">
+            <span>Vues</span>
+            <input type="range" id="balance" min="0" max="100" step="1" value="33">
+            <span>Note</span>
+          </div>
+          <p>« Note » = taux de pouces par rapport à la normale de la chaîne. Par défaut, les vues comptent deux fois plus que la note.</p>
+          <button type="button" class="btn small" id="balance-reset">Réinitialiser</button>
+        </div>
       </details>
       <p class="empty" id="empty" hidden></p>
       <ol class="cards" id="cards"></ol>

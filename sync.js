@@ -8,22 +8,24 @@ export const LIGHT_AFTER_MS = 3 * HOUR_MS;
 export const FULL_AFTER_MS = 7 * DAY_MS;
 export const SUBS_AFTER_MS = 24 * HOUR_MS;
 export const RECENT_DAYS = 30;
+// Bump when the shape of cached videos changes: forces one full reload (v2 added `likes`).
+export const SCHEMA = 2;
 const CONCURRENCY = 6;
 
-// meta: { lastFull, lastLight, lastSubs } (epoch ms or null) -> { mode: 'full'|'light'|'none', subs }
+// meta: { lastFull, lastLight, lastSubs, schema } (epoch ms or null) -> { mode: 'full'|'light'|'none', subs }
 export function planRefresh(meta, now, { force = false, forceSubs = false } = {}) {
   let mode = 'none';
-  if (!meta.lastFull || now - meta.lastFull > FULL_AFTER_MS) mode = 'full';
+  if (!meta.lastFull || meta.schema !== SCHEMA || now - meta.lastFull > FULL_AFTER_MS) mode = 'full';
   else if (force || now - Math.max(meta.lastFull, meta.lastLight || 0) > LIGHT_AFTER_MS) mode = 'light';
   const subs = forceSubs || !meta.lastSubs || now - meta.lastSubs > SUBS_AFTER_MS;
   return { mode, subs };
 }
 
 export async function readMeta(cache) {
-  const [lastFull, lastLight, lastSubs] = await Promise.all(
-    ['lastFull', 'lastLight', 'lastSubs'].map((k) => cache.getMeta(k)),
+  const [lastFull, lastLight, lastSubs, schema] = await Promise.all(
+    ['lastFull', 'lastLight', 'lastSubs', 'schema'].map((k) => cache.getMeta(k)),
   );
-  return { lastFull, lastLight, lastSubs };
+  return { lastFull, lastLight, lastSubs, schema };
 }
 
 const toRecord = (v, fetchedAt) => ({
@@ -34,6 +36,7 @@ const toRecord = (v, fetchedAt) => ({
   thumb: v.thumb,
   duration: v.duration,
   views: v.views,
+  likes: v.likes ?? null,
   fetchedAt,
   excluded: exclusionReason(v),
 });
@@ -74,7 +77,7 @@ async function loadChannels({ api, cache, channels, now, onProgress }) {
     const ids = uploads.map((u) => u.videoId).slice(0, 50);
     const fetched = ids.length ? await api.fetchVideos(ids) : [];
     await cache.replaceChannelVideos(c.id, fetched.map((v) => toRecord(v, now)));
-    await cache.putMany('channels', [{ ...c, loadedAt: now }]);
+    await cache.putMany('channels', [{ ...c, loadedAt: now, schema: SCHEMA }]);
     onProgress({ phase: 'channels', done: ++done, total: channels.length });
   });
 }
@@ -113,8 +116,9 @@ export async function runRefresh({ api, cache, mode, subs, now = Date.now(), onP
   const fresh = channels.filter((c) => !c.loadedAt);
 
   if (mode === 'full') {
-    // Resumable: a channel loaded during the last day (an interrupted run) is not fetched again.
-    const targets = channels.filter((c) => !c.loadedAt || now - c.loadedAt > DAY_MS);
+    // Resumable: a channel loaded during the last day (an interrupted run) is not fetched again,
+    // unless its videos come from an older cache schema.
+    const targets = channels.filter((c) => !c.loadedAt || c.schema !== SCHEMA || now - c.loadedAt > DAY_MS);
     await loadChannels({ api, cache, channels: targets, now, onProgress });
   } else {
     await loadChannels({ api, cache, channels: fresh, now, onProgress });
@@ -123,7 +127,10 @@ export async function runRefresh({ api, cache, mode, subs, now = Date.now(), onP
     }
   }
 
-  if (mode === 'full') await cache.setMeta('lastFull', now);
+  if (mode === 'full') {
+    await cache.setMeta('lastFull', now);
+    await cache.setMeta('schema', SCHEMA);
+  }
   if (mode !== 'none') await cache.setMeta('lastLight', now);
   if (subs || mode === 'full') await cache.setMeta('lastSubs', now);
   return { units: api.units - startUnits };

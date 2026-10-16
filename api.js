@@ -144,6 +144,7 @@ export function createApi({ getToken, refreshToken, fetchImpl = (...a) => fetch(
       thumb: thumbOf(v.snippet.thumbnails),
       duration: parseDuration(v.contentDetails?.duration),
       views: v.statistics?.viewCount == null ? null : Number(v.statistics.viewCount),
+      likes: v.statistics?.likeCount == null ? null : Number(v.statistics.likeCount),
       live: !!v.liveStreamingDetails || (v.snippet.liveBroadcastContent || 'none') !== 'none',
     }));
   };

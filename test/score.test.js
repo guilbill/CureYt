@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseDuration, exclusionReason, median, computeScores, DEFAULTS } from '../score.js';
+import { parseDuration, exclusionReason, median, computeScores, combineScore, DEFAULTS } from '../score.js';
 
 const DAY = 86400000;
 const NOW = Date.UTC(2026, 9, 16, 12);
@@ -188,4 +188,50 @@ test('a video younger than 6 hours is not ranked yet, an older one is', () => {
   assert.ok(out.find((s) => s.id === 'ok'));
   const custom = computeScores({ channels, videos, now: NOW, params: { minVideoAgeHours: 0 } });
   assert.ok(custom.find((s) => s.id === 'young'));
+});
+
+// --- like rate ("note") ---
+const liked = (channelId, views, likes, count = 10) =>
+  Array.from({ length: count }, (_, i) => vid(`${channelId}-L${i}`, channelId, views, 20 + i, { likes }));
+const chA = [{ id: 'a', subscriberCount: 1000, hiddenSubscriberCount: false }];
+
+test('a better like rate than the channel norm raises the note component', () => {
+  const videos = [
+    ...liked('a', 1000, 50), // norm: 5 %
+    vid('good', 'a', 1000, 2, { likes: 100 }),
+    vid('bad', 'a', 1000, 2, { likes: 10 }),
+  ];
+  const out = computeScores({ channels: chA, videos, now: NOW });
+  const good = out.find((s) => s.id === 'good');
+  const bad = out.find((s) => s.id === 'bad');
+  assert.ok(good.sNote > 0 && bad.sNote < 0);
+  assert.equal(good.sViews, bad.sViews); // same views, same age
+  assert.ok(good.score > bad.score);
+});
+
+test('hidden likes give a neutral note component', () => {
+  const videos = [...liked('a', 1000, 50), vid('h', 'a', 1000, 2, { likes: null }), vid('u', 'a', 1000, 2)];
+  const out = computeScores({ channels: chA, videos, now: NOW });
+  assert.equal(out.find((s) => s.id === 'h').sNote, 0);
+  assert.equal(out.find((s) => s.id === 'u').sNote, 0);
+});
+
+test('the like rate of a barely viewed video is pulled toward the channel norm', () => {
+  const videos = [...liked('a', 1000, 50), vid('tiny', 'a', 10, 2, { likes: 3 })]; // 30 % on 10 views
+  const r = computeScores({ channels: chA, videos, now: NOW }).find((s) => s.id === 'tiny');
+  assert.ok(r.sNote > 0 && r.sNote < 0.5, `sNote ${r.sNote}`); // unsmoothed it would be ln(6) = 1.79
+});
+
+test('no like data anywhere: note component is 0 and finite', () => {
+  const r = computeScores({ channels: chA, videos: [...refVideos('a', 1000), vid('v', 'a', 500, 2, { likes: 5 })], now: NOW })
+    .find((s) => s.id === 'v');
+  assert.equal(r.sNote, 0);
+});
+
+test('combineScore: balance moves weight between views and likes, default keeps views x1 + likes x0.5', () => {
+  const parts = { sViews: 2, sNote: -1, ageDays: 0 };
+  assert.ok(Math.abs(combineScore(parts, 0) - 3) < 1e-9);
+  assert.ok(Math.abs(combineScore(parts, 1) - -1.5) < 1e-9);
+  assert.ok(Math.abs(combineScore(parts) - (2 + 0.5 * -1)) < 1e-9);
+  assert.ok(Math.abs(combineScore({ ...parts, ageDays: 10 }, 0.5) - (combineScore(parts, 0.5) - DEFAULTS.lambda * 10)) < 1e-9);
 });

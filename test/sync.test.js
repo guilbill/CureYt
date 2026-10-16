@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryCache } from '../cache.js';
 import { ApiError } from '../api.js';
-import { planRefresh, runRefresh, syncSubscriptions, HOUR_MS } from '../sync.js';
+import { planRefresh, runRefresh, syncSubscriptions, HOUR_MS, SCHEMA } from '../sync.js';
 import { DAY_MS } from '../score.js';
 
 const NOW = Date.UTC(2026, 9, 16, 12);
@@ -37,7 +37,7 @@ function fakeApi({ channels = 200, perChannel = 50, stepDays = 4, failAfterUnits
       return list.filter((id) => !missing.has(id)).map((id) => {
         const [ch, i] = id.split(':');
         return {
-          id, channelId: ch, title: id, thumb: '', views: 1000,
+          id, channelId: ch, title: id, thumb: '', views: 1000, likes: i === '3' ? null : 40,
           publishedAt: new Date(NOW - (i * stepDays + 0.5) * DAY_MS).toISOString(),
           duration: i === '1' ? 59 : 600, live: i === '2',
         };
@@ -49,11 +49,12 @@ function fakeApi({ channels = 200, perChannel = 50, stepDays = 4, failAfterUnits
 
 test('planRefresh follows the spec thresholds', () => {
   assert.deepEqual(planRefresh({}, NOW), { mode: 'full', subs: true });
-  const fresh = { lastFull: NOW - HOUR_MS, lastLight: NOW - HOUR_MS, lastSubs: NOW - HOUR_MS };
+  const fresh = { lastFull: NOW - HOUR_MS, lastLight: NOW - HOUR_MS, lastSubs: NOW - HOUR_MS, schema: SCHEMA };
   assert.deepEqual(planRefresh(fresh, NOW), { mode: 'none', subs: false });
   assert.equal(planRefresh({ ...fresh, lastLight: NOW - 4 * HOUR_MS, lastFull: NOW - 4 * HOUR_MS }, NOW).mode, 'light');
   assert.equal(planRefresh({ ...fresh, lastFull: NOW - 8 * DAY_MS }, NOW).mode, 'full');
   assert.equal(planRefresh({ ...fresh, lastSubs: NOW - 25 * HOUR_MS }, NOW).subs, true);
+  assert.equal(planRefresh({ ...fresh, schema: SCHEMA - 1 }, NOW).mode, 'full'); // old cache shape
   assert.equal(planRefresh(fresh, NOW, { force: true }).mode, 'light');
   assert.equal(planRefresh(fresh, NOW, { forceSubs: true }).subs, true);
 });
@@ -144,4 +145,23 @@ test('syncSubscriptions keeps loadedAt of known channels', async () => {
   await runRefresh({ api, cache, mode: 'full', subs: true, now: NOW });
   await syncSubscriptions({ api, cache });
   assert.ok((await cache.getAll('channels')).every((c) => c.loadedAt === NOW));
+});
+
+test('likes are stored (null when hidden) and the cache schema is recorded', async () => {
+  const api = fakeApi({ channels: 1 }); const cache = createMemoryCache();
+  await runRefresh({ api, cache, mode: 'full', subs: true, now: NOW });
+  const byId = Object.fromEntries((await cache.getAll('videos')).map((v) => [v.id, v]));
+  assert.equal(byId['c0:0'].likes, 40);
+  assert.equal(byId['c0:3'].likes, null);
+  assert.equal(await cache.getMeta('schema'), SCHEMA);
+});
+
+test('an outdated schema reloads channels even if they were loaded less than a day ago', async () => {
+  const api = fakeApi({ channels: 2 }); const cache = createMemoryCache();
+  await runRefresh({ api, cache, mode: 'full', subs: true, now: NOW });
+  const chans = await cache.getAll('channels');
+  await cache.putMany('channels', chans.map((c) => ({ ...c, schema: SCHEMA - 1 })));
+  const before = api.units;
+  await runRefresh({ api, cache, mode: 'full', subs: false, now: NOW + HOUR_MS });
+  assert.ok(api.units - before >= 2 * 2, `units ${api.units - before}`); // 2 calls per channel reloaded
 });

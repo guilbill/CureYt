@@ -1,5 +1,5 @@
 import { openCache, createMemoryCache } from './cache.js';
-import { computeScores, DAY_MS } from './score.js';
+import { computeScores, combineScore, DEFAULTS } from './score.js';
 import { createApi, ApiError } from './api.js';
 import { planRefresh, runRefresh, readMeta } from './sync.js';
 import * as auth from './auth.js';
@@ -14,12 +14,16 @@ const store = {
 };
 const FLAG = 'cureyt.signedIn';
 const PERIOD_KEY = 'cureyt.period';
+const BALANCE_KEY = 'cureyt.balance'; // 0..100, 0 = views only, 100 = likes only
+const DEFAULT_BALANCE = Math.round(DEFAULTS.noteBalance * 100);
+const storedBalance = Number(store.get(BALANCE_KEY));
 
 const state = {
   cache: null,
   view: 'landing', // landing | loading | list
   signedIn: false,
   period: PERIODS.includes(+store.get(PERIOD_KEY)) ? +store.get(PERIOD_KEY) : 7,
+  balance: store.get(BALANCE_KEY) != null && storedBalance >= 0 && storedBalance <= 100 ? storedBalance : DEFAULT_BALANCE,
   items: [], // scored, eligible videos with display data, sorted by score
   hasData: false,
   lastUpdated: null,
@@ -70,11 +74,16 @@ async function loadFromCache() {
   const channelById = new Map(channels.map((c) => [c.id, c]));
   const videoById = new Map(videos.map((v) => [v.id, v]));
   const scores = computeScores({ channels, videos, now: Date.now() });
-  state.items = scores
-    .map((s) => ({ ...s, video: videoById.get(s.id), channel: channelById.get(s.channelId) }))
-    .sort((a, b) => b.score - a.score);
+  state.items = scores.map((s) => ({ ...s, video: videoById.get(s.id), channel: channelById.get(s.channelId) }));
+  rank();
   state.hasData = videos.length > 0;
   state.lastUpdated = Math.max(meta.lastFull || 0, meta.lastLight || 0) || null;
+}
+
+// The balance slider only re-combines the two score components: no API call, no recompute of references.
+function rank() {
+  for (const it of state.items) it.score = combineScore(it, state.balance / 100);
+  state.items.sort((a, b) => b.score - a.score);
 }
 
 // ---------- rendering ----------
@@ -103,7 +112,7 @@ function renderUpdated() {
 }
 
 function card(item) {
-  const { video, channel, rho, confidence, ageDays, vproj, M, R, n, score } = item;
+  const { video, channel, rho, confidence, ageDays, vproj, M, R, n, score, sViews, sNote } = item;
   const url = `https://www.youtube.com/watch?v=${encodeURIComponent(video.id)}`;
   const hot = rho >= 2;
   return h('li', { class: 'card' },
@@ -118,7 +127,7 @@ function card(item) {
         h('span', { class: `badge${hot ? ' hot' : ''}`, title: 'Vues projetées par rapport à la référence de la chaîne' }, `×${fmtRatio.format(rho)}`),
         confidence === 'low' ? h('span', { class: 'badge low', title: 'Peu de vidéos de référence pour cette chaîne' }, 'peu de données') : null),
       debug ? h('div', { class: 'debug' },
-        `ρ ${rho.toFixed(2)} · Vproj ${Math.round(vproj)} · M ${M == null ? '-' : Math.round(M)} · R ${Math.round(R)} · n ${n} · S ${score.toFixed(2)} · ${ageDays.toFixed(1)} j`) : null));
+        `ρ ${rho.toFixed(2)} · Vproj ${Math.round(vproj)} · M ${M == null ? '-' : Math.round(M)} · R ${Math.round(R)} · n ${n} · views ${sViews.toFixed(2)} · note ${sNote.toFixed(2)} · S ${score.toFixed(2)} · ${ageDays.toFixed(1)} j`) : null));
 }
 
 function renderList() {
@@ -269,6 +278,20 @@ async function erase() {
 
 // ---------- boot ----------
 async function init() {
+  const slider = $('balance');
+  slider.value = state.balance;
+  slider.addEventListener('input', () => {
+    state.balance = Number(slider.value);
+    store.set(BALANCE_KEY, state.balance);
+    rank();
+    renderList();
+  });
+  $('balance-reset').addEventListener('click', () => {
+    slider.value = state.balance = DEFAULT_BALANCE;
+    store.set(BALANCE_KEY, null);
+    rank();
+    renderList();
+  });
   $('refresh').addEventListener('click', () => startRefresh({ manual: true, force: true }));
   $('signout').addEventListener('click', signOut);
   $('erase').addEventListener('click', erase);

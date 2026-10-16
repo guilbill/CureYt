@@ -67,13 +67,14 @@ test('listSubscriptions follows pagination and counts one unit per page', async 
 test('fetchVideos maps live, duration and missing views', async () => {
   const api = make(async () => json(200, {
     items: [
-      { id: '1', snippet: { channelId: 'c', title: 't', publishedAt: 'x', liveBroadcastContent: 'none' }, contentDetails: { duration: 'PT10M' }, statistics: { viewCount: '42' } },
+      { id: '1', snippet: { channelId: 'c', title: 't', publishedAt: 'x', liveBroadcastContent: 'none' }, contentDetails: { duration: 'PT10M' }, statistics: { viewCount: '42', likeCount: '7' } },
       { id: '2', snippet: { channelId: 'c', title: 't', publishedAt: 'x', liveBroadcastContent: 'upcoming' }, contentDetails: { duration: 'PT1H' }, statistics: {} },
       { id: '3', snippet: { channelId: 'c', title: 't', publishedAt: 'x', liveBroadcastContent: 'none' }, contentDetails: { duration: 'PT5M' }, statistics: {}, liveStreamingDetails: {} },
     ],
   }));
   const [a, b, c] = await api.fetchVideos(['1', '2', '3']);
-  assert.deepEqual([a.views, a.duration, a.live], [42, 600, false]);
+  assert.deepEqual([a.views, a.likes, a.duration, a.live], [42, 7, 600, false]);
+  assert.equal(b.likes, null);
   assert.deepEqual([b.views, b.live], [null, true]);
   assert.equal(c.live, true);
 });
