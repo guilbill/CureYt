@@ -74,6 +74,20 @@ function fmtDuration(sec) {
 
 const safeImg = (u) => (/^(https:\/\/|data:image\/)/.test(u || '') ? u : '');
 
+// The API only stores the 320x180 thumbnail, too soft on a wide card. Ask for the 1280x720 one (derived from the id,
+// no API call) and fall back to the stored one when the video has none.
+function thumbImg(video) {
+  const fallback = safeImg(video.thumb);
+  const img = h('img', {
+    src: `https://i.ytimg.com/vi/${encodeURIComponent(video.id)}/maxresdefault.jpg`, alt: '', loading: 'lazy', width: '1280', height: '720',
+  });
+  const useFallback = () => { if (fallback && img.src !== fallback) img.src = fallback; };
+  img.addEventListener('error', useFallback);
+  // A missing maxres comes back as a 120x90 grey placeholder (status 404, but browsers still decode it): no error event
+  img.addEventListener('load', () => { if (img.naturalWidth <= 120) useFallback(); });
+  return img;
+}
+
 // ---------- data ----------
 async function loadFromCache() {
   const [channels, videos, meta] = await Promise.all([
@@ -132,7 +146,7 @@ function card(item) {
   const hot = rho >= 2;
   return h('li', { class: 'card' },
     h('a', { class: 'card-link', href: url, target: '_blank', rel: 'noopener noreferrer' },
-      h('img', { src: safeImg(video.thumb), alt: '', loading: 'lazy', width: '320', height: '180' }),
+      thumbImg(video),
       h('span', { class: 'badges' },
         h('span', { class: `badge${hot ? ' hot' : ''}`, title: 'Vues projetées par rapport à la référence de la chaîne' }, `×${fmtRatio.format(rho)}`),
         confidence === 'low' ? h('span', { class: 'badge low', title: 'Peu de vidéos de référence pour cette chaîne' }, 'peu de données') : null),
