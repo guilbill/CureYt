@@ -5,6 +5,7 @@ import { planRefresh, runRefresh, readMeta } from './sync.js';
 import * as auth from './auth.js';
 
 const PERIODS = [3, 7, 14, 30];
+const SIZES = [['s', 'S'], ['m', 'M'], ['l', 'L']]; // card size: small, medium, large
 const debug = new URLSearchParams(location.search).has('debug'); // ?debug shows the score inputs on each card
 const $ = (id) => document.getElementById(id);
 
@@ -14,6 +15,7 @@ const store = {
 };
 const FLAG = 'cureyt.signedIn';
 const PERIOD_KEY = 'cureyt.period';
+const SIZE_KEY = 'cureyt.size';
 const BALANCE_KEY = 'cureyt.balance'; // 0..100, 0 = views only, 100 = likes only
 const DEFAULT_BALANCE = Math.round(DEFAULTS.noteBalance * 100);
 const storedBalance = Number(store.get(BALANCE_KEY));
@@ -23,6 +25,7 @@ const state = {
   view: 'landing', // landing | loading | list
   signedIn: false,
   period: PERIODS.includes(+store.get(PERIOD_KEY)) ? +store.get(PERIOD_KEY) : 7,
+  size: SIZES.some(([k]) => k === store.get(SIZE_KEY)) ? store.get(SIZE_KEY) : 'm',
   balance: store.get(BALANCE_KEY) != null && storedBalance >= 0 && storedBalance <= 100 ? storedBalance : DEFAULT_BALANCE,
   items: [], // scored, eligible videos with display data, sorted by score
   hasData: false,
@@ -103,6 +106,13 @@ function renderPeriods() {
   }, `${d} j`)));
 }
 
+function renderSizes() {
+  $('sizes').replaceChildren(...SIZES.map(([k, label]) => h('button', {
+    type: 'button', class: 'period', 'aria-pressed': String(k === state.size), 'aria-label': `Taille ${label}`,
+    onclick: () => { state.size = k; store.set(SIZE_KEY, k); renderSizes(); renderList(); },
+  }, label)));
+}
+
 function renderUpdated() {
   const parts = [];
   if (state.refreshing) parts.push('Mise à jour…');
@@ -116,22 +126,23 @@ function card(item) {
   const url = `https://www.youtube.com/watch?v=${encodeURIComponent(video.id)}`;
   const hot = rho >= 2;
   return h('li', { class: 'card' },
-    h('a', { class: 'thumb', href: url, target: '_blank', rel: 'noopener noreferrer', tabindex: '-1', 'aria-hidden': 'true' },
+    h('a', { class: 'card-link', href: url, target: '_blank', rel: 'noopener noreferrer' },
       h('img', { src: safeImg(video.thumb), alt: '', loading: 'lazy', width: '320', height: '180' }),
-      h('span', { class: 'dur' }, fmtDuration(video.duration))),
-    h('div', { class: 'body' },
-      h('a', { class: 'title', href: url, target: '_blank', rel: 'noopener noreferrer' }, video.title),
-      h('div', { class: 'meta' }, `${channel.title} · ${timeAgo(Date.parse(video.publishedAt))}`),
-      h('div', { class: 'stats' },
-        h('span', { class: 'views' }, `${fmtViews.format(video.views)} vues`),
+      h('span', { class: 'badges' },
         h('span', { class: `badge${hot ? ' hot' : ''}`, title: 'Vues projetées par rapport à la référence de la chaîne' }, `×${fmtRatio.format(rho)}`),
         confidence === 'low' ? h('span', { class: 'badge low', title: 'Peu de vidéos de référence pour cette chaîne' }, 'peu de données') : null),
-      debug ? h('div', { class: 'debug' },
-        `ρ ${rho.toFixed(2)} · Vproj ${Math.round(vproj)} · M ${M == null ? '-' : Math.round(M)} · R ${Math.round(R)} · n ${n} · views ${sViews.toFixed(2)} · note ${sNote.toFixed(2)} · S ${score.toFixed(2)} · ${ageDays.toFixed(1)} j`) : null));
+      h('span', { class: 'dur' }, fmtDuration(video.duration)),
+      h('span', { class: 'info' },
+        h('span', { class: 'title' }, video.title),
+        h('span', { class: 'meta' }, `${channel.title} · ${timeAgo(Date.parse(video.publishedAt))}`),
+        h('span', { class: 'stats' }, `${fmtViews.format(video.views)} vues`),
+        debug ? h('span', { class: 'debug' },
+          `ρ ${rho.toFixed(2)} · Vproj ${Math.round(vproj)} · M ${M == null ? '-' : Math.round(M)} · R ${Math.round(R)} · n ${n} · views ${sViews.toFixed(2)} · note ${sNote.toFixed(2)} · S ${score.toFixed(2)} · ${ageDays.toFixed(1)} j`) : null)));
 }
 
 function renderList() {
   const shown = state.items.filter((i) => i.ageDays <= state.period);
+  $('cards').dataset.size = state.size;
   $('cards').replaceChildren(...shown.map(card));
   const empty = $('empty');
   empty.hidden = shown.length > 0;
@@ -170,8 +181,10 @@ function render() {
   $('loading').hidden = state.view !== 'loading';
   $('listview').hidden = !showList;
   $('controls').hidden = !showList;
+  $('menu').hidden = !showList;
+  $('info').hidden = !showList;
   if (state.view === 'landing') renderLanding();
-  if (showList) { renderPeriods(); renderList(); }
+  if (showList) { renderPeriods(); renderSizes(); renderList(); }
   renderUpdated();
   renderNotice();
 }
@@ -308,6 +321,10 @@ async function init() {
     renderList();
   });
   $('refresh').addEventListener('click', () => startRefresh({ manual: true, force: true }));
+  const pop = $('pop');
+  $('info').addEventListener('click', () => pop.showModal());
+  $('pop-close').addEventListener('click', () => pop.close());
+  pop.addEventListener('click', (e) => { if (e.target === pop) pop.close(); }); // click on the backdrop
   $('signout').addEventListener('click', signOut);
   $('erase').addEventListener('click', erase);
   document.addEventListener('click', (e) => { if (!$('menu').contains(e.target)) $('menu').open = false; });

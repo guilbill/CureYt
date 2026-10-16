@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light dark">
+  <meta name="color-scheme" content="dark">
   <title>CureYt</title>
   <meta name="description" content="Les vidéos récentes de vos abonnements YouTube qui surperforment le plus par rapport à leur propre chaîne.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23e5322d'/%3E%3Cpath d='M12 9l12 7-12 7z' fill='white'/%3E%3C/svg%3E">
@@ -14,16 +14,19 @@
     <a class="brand" href="./">CureYt</a>
     <div class="controls" id="controls" hidden>
       <div class="periods" role="group" aria-label="Période" id="periods"></div>
-      <span class="updated" id="updated" aria-live="polite"></span>
+      <div class="periods" role="group" aria-label="Taille des vidéos" id="sizes"></div>
       <button type="button" class="btn" id="refresh">Rafraîchir</button>
-      <details class="menu" id="menu">
-        <summary class="btn" aria-label="Menu">⋯</summary>
-        <div class="menu-pop">
-          <button type="button" id="signout">Se déconnecter</button>
-          <button type="button" id="erase" class="danger">Effacer mes données</button>
-        </div>
-      </details>
+      <span class="updated" id="updated" aria-live="polite"></span>
     </div>
+    <details class="menu" id="menu" hidden>
+      <summary class="icon-btn" aria-label="Compte" title="Compte">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v9"/><path d="M5.6 6.6a8 8 0 1 0 12.8 0"/></svg>
+      </summary>
+      <div class="menu-pop">
+        <button type="button" id="signout">Se déconnecter</button>
+        <button type="button" id="erase" class="danger">Effacer mes données</button>
+      </div>
+    </details>
   </header>
   <main id="main">
     <div id="notice" class="notice" role="status" hidden></div>
@@ -33,29 +36,33 @@
       <progress id="loading-bar" max="100"></progress>
     </section>
     <section id="listview" hidden>
-      <details class="how">
-        <summary>Comment lire le classement ?</summary>
-        <p><strong>×5,3</strong> : cette vidéo marche 5,3 fois mieux que d'habitude pour sa chaîne.</p>
-        <p>Exemple : si les vidéos de cette chaîne font en général 10 000 vues, celle-ci en est partie pour environ 53 000. Pour une vidéo de quelques jours, on estime où elle finira, au lieu de juste compter ses vues actuelles.</p>
-        <p>Les vidéos sont classées d'abord par ce ratio, puis par nombre de vues, avec un léger avantage aux plus récentes. Le taux de pouces, comparé à celui de la chaîne, ajuste le classement (voir Réglages). Shorts, lives et premières sont exclus. « peu de données » : moins de 5 vidéos de référence pour cette chaîne.</p>
-      </details>
-      <details class="how">
-        <summary>Réglages</summary>
-        <div class="setting">
-          <label for="balance">Ce qui compte le plus dans le classement</label>
-          <div class="slider">
-            <span>Vues</span>
-            <input type="range" id="balance" min="0" max="100" step="1" value="33">
-            <span>Note</span>
-          </div>
-          <p>« Note » = taux de pouces par rapport à la normale de la chaîne. Par défaut, les vues comptent deux fois plus que la note.</p>
-          <button type="button" class="btn small" id="balance-reset">Réinitialiser</button>
-        </div>
-      </details>
       <p class="empty" id="empty" hidden></p>
       <ol class="cards" id="cards"></ol>
     </section>
   </main>
+  <button type="button" class="fab" id="info" aria-label="Aide et réglages" title="Aide et réglages" hidden>
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10"/><path d="M18 7h2"/><circle cx="16" cy="7" r="2"/><path d="M4 17h2"/><path d="M10 17h10"/><circle cx="8" cy="17" r="2"/></svg>
+  </button>
+  <dialog class="pop" id="pop" aria-labelledby="pop-title">
+    <div class="pop-head">
+      <h2 id="pop-title">Comment lire le classement ?</h2>
+      <button type="button" class="icon-btn plain" id="pop-close" aria-label="Fermer">✕</button>
+    </div>
+    <p><strong>×5,3</strong> : cette vidéo marche 5,3 fois mieux que d'habitude pour sa chaîne.</p>
+    <p>Exemple : si les vidéos de cette chaîne font en général 10 000 vues, celle-ci en est partie pour environ 53 000. Pour une vidéo de quelques jours, on estime où elle finira, au lieu de juste compter ses vues actuelles.</p>
+    <p>Les vidéos sont classées d'abord par ce ratio, puis par nombre de vues, avec un léger avantage aux plus récentes. Le taux de pouces, comparé à celui de la chaîne, ajuste le classement (voir Réglages). Shorts, lives et premières sont exclus. « peu de données » : moins de 5 vidéos de référence pour cette chaîne.</p>
+    <h2>Réglages</h2>
+    <div class="setting">
+      <label for="balance">Ce qui compte le plus dans le classement</label>
+      <div class="slider">
+        <span>Vues</span>
+        <input type="range" id="balance" min="0" max="100" step="1" value="33">
+        <span>Note</span>
+      </div>
+      <p>« Note » = taux de pouces par rapport à la normale de la chaîne. Par défaut, les vues comptent deux fois plus que la note.</p>
+      <button type="button" class="btn small" id="balance-reset">Réinitialiser</button>
+    </div>
+  </dialog>
   <noscript><p class="notice">JavaScript est nécessaire pour utiliser CureYt.</p></noscript>
   <script type="module" src="app.js"></script>
 </body>
