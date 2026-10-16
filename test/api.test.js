@@ -99,3 +99,13 @@ test('pool never exceeds the concurrency limit and stops after a failure', async
 test('chunk', () => {
   assert.deepEqual(chunk([1, 2, 3, 4, 5], 2), [[1, 2], [3, 4], [5]]);
 });
+
+test('a failing getToken is not retried as a network error', async () => {
+  let calls = 0;
+  const api = createApi({
+    getToken: async () => { calls++; throw new ApiError(401, 'popup_failed_to_open'); },
+    refreshToken: async () => {}, fetchImpl: async () => json(200, {}), retryDelayMs: 0,
+  });
+  await assert.rejects(api.fetchChannels(['a']), (e) => e.isAuth);
+  assert.equal(calls, 1);
+});

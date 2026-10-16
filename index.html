@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>CureYt</title>
+  <meta name="description" content="Les vidéos récentes de vos abonnements YouTube qui surperforment le plus par rapport à leur propre chaîne.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23e5322d'/%3E%3Cpath d='M12 9l12 7-12 7z' fill='white'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="./">CureYt</a>
+    <div class="controls" id="controls" hidden>
+      <div class="periods" role="group" aria-label="Période" id="periods"></div>
+      <span class="updated" id="updated" aria-live="polite"></span>
+      <button type="button" class="btn" id="refresh">Rafraîchir</button>
+      <details class="menu" id="menu">
+        <summary class="btn" aria-label="Menu">⋯</summary>
+        <div class="menu-pop">
+          <button type="button" id="signout">Se déconnecter</button>
+          <button type="button" id="erase" class="danger">Effacer mes données</button>
+        </div>
+      </details>
+    </div>
+  </header>
+  <main id="main">
+    <div id="notice" class="notice" role="status" hidden></div>
+    <section id="landing" class="landing" hidden></section>
+    <section id="loading" class="loading" hidden>
+      <p id="loading-text">Récupération de vos abonnements…</p>
+      <progress id="loading-bar" max="100"></progress>
+    </section>
+    <section id="listview" hidden>
+      <p class="empty" id="empty" hidden></p>
+      <ol class="cards" id="cards"></ol>
+    </section>
+  </main>
+  <noscript><p class="notice">JavaScript est nécessaire pour utiliser CureYt.</p></noscript>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

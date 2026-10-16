@@ -52,9 +52,10 @@ export function createApi({ getToken, refreshToken, fetchImpl = (...a) => fetch(
     let networkTries = 0;
     let refreshed = false;
     for (;;) {
+      const token = await getToken(); // auth failures surface as-is, they are not network errors
       let res;
       try {
-        res = await fetchImpl(url, { headers: { Authorization: `Bearer ${await getToken()}` } });
+        res = await fetchImpl(url, { headers: { Authorization: `Bearer ${token}` } });
       } catch (e) {
         if (networkTries++ < 2) {
           await new Promise((r) => setTimeout(r, retryDelayMs));
