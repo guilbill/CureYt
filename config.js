@@ -1,4 +1,3 @@
 // Public OAuth client ID (type "Web application"). It is not a secret, it is meant to be committed.
-// Leave empty until the Google Cloud setup described in README.md is done: the page then explains
-// that sign-in is not configured yet.
-export const CLIENT_ID = '';
+// Empty means sign-in is not configured: the page then says so (see README.md).
+export const CLIENT_ID = '568424271371-jl068dpsgqmdktqop820i4d1l8k40se8.apps.googleusercontent.com';
